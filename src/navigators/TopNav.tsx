@@ -14,14 +14,16 @@ const TopNav = () => {
     <Tab.Navigator
         initialRouteName="StatsHome"
         screenOptions={{
-            tabBarActiveTintColor: "black",
-            tabBarLabelStyle: { fontSize: 12, color: "#fff"},
-            tabBarStyle: { backgroundColor: '#0D1B2A', marginTop: 30, }
+            tabBarActiveTintColor: "#415A77",
+            tabBarLabelStyle: { fontSize: 14, fontWeight: '800', color: "#fff"},
+            tabBarStyle: { backgroundColor: '#415A77', height: 45, marginTop: 30, marginLeft: 17, marginRight: 17, borderRadius: 20, shadowColor: '#fff'},
+            tabBarIndicatorStyle: { backgroundColor: '#919EAA', height: '100%', borderBottomStartRadius: 20, borderTopStartRadius: 20, borderTopEndRadius: 20, borderBottomEndRadius: 20},
+
         }}>
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: "Test"}}></Tab.Screen>
-      <Tab.Screen name="Weekly" component={WeeklyScreen}></Tab.Screen>
-      <Tab.Screen name="Monthly" component={MonthlyScreen}></Tab.Screen>
-      <Tab.Screen name="Yearly" component={YearlyScreen}></Tab.Screen>
+      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: "History"}}></Tab.Screen>
+      <Tab.Screen name="Week" component={WeeklyScreen}></Tab.Screen>
+      <Tab.Screen name="Month" component={MonthlyScreen}></Tab.Screen>
+      <Tab.Screen name="Year" component={YearlyScreen}></Tab.Screen>
     </Tab.Navigator>
   )
 }

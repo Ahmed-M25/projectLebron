@@ -1,30 +1,10 @@
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, StatusBar, Touchable } from 'react-native'
 import { useEffect, useState } from 'react'
+import {url} from './functions'
 import React from 'react'
-const url = 'http://127.0.0.1:5000/player-stats';
 
 // https://stackoverflow.com/questions/63132548/react-navigation-5-error-binding-element-navigation-implicitly-has-an-any-ty
 const HomeScreen = ({ navigation}: {navigation: any}) => {
-
-  // Define an async function to fetch JSON data
-  async function fetchJsonData(url: string): Promise<any> {
-    try {
-        // Fetch data from the provided URL
-        const response = await fetch(url);
-        // Parse the response as JSON
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        // Handle any errors that occur during the fetch
-        console.error('Error fetching data:', error);
-        throw error;
-    }
-  }
-
-  fetchJsonData(url)
-    .then(data => console.log('Fetched data:', data))
-    .catch(error => console.error('Error in fetching data:', error));
-  // GET LAST ELEMENT IN LIST AND PUT THAT AS THING
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,7 +39,7 @@ const HomeScreen = ({ navigation}: {navigation: any}) => {
         style={styles.startButton} 
         onPress={() => {
           console.log('Pressed!')
-          const request = new Request("http://127.0.0.1:5000/start");
+          const request = new Request(url + "start");
 
           fetch(request)
             .then((response) => {
@@ -76,14 +56,8 @@ const HomeScreen = ({ navigation}: {navigation: any}) => {
             .catch((error) => {
               console.error(error);
             });
-
-
-          const url = request.url;
-          const method = request.method;
-          const credentials = request.credentials;
-          const bodyUsed = request.bodyUsed;
           
-          navigation.navigate('WorkoutStart')
+          navigation.navigate('WorkoutStart', { autoStart: true })
         }}>
         <Text style={styles.startButtonText}>Start</Text>
       </TouchableOpacity>
@@ -101,10 +75,9 @@ const styles = StyleSheet.create({
   
   titleText: {
     color:'white',
-    fontFamily: 'Roboto',
     marginTop: 15,
     marginBottom: 50,
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "800",
   },
 
@@ -122,7 +95,6 @@ const styles = StyleSheet.create({
 
   bigCircleTxt: {
     color:'#415A77',
-    fontFamily: 'Roboto',
     fontSize: 100,
     fontWeight: "900",
   },
@@ -135,7 +107,6 @@ const styles = StyleSheet.create({
 
   tagsText: {
     color:'#415A77',
-    fontFamily: 'Roboto',
     marginHorizontal: 50,
     fontSize: 25,
     fontWeight: "900",
@@ -161,7 +132,6 @@ const styles = StyleSheet.create({
   },
   smallCircleTxt: {
     color:'#415A77',
-    fontFamily: 'Roboto',
     fontSize: 70,
     fontWeight: "900",
   },
@@ -172,11 +142,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     backgroundColor: '#415A77',
-    marginTop: 20,
+    marginTop: 40,
   },
   startButtonText: {
     color: '#DCDCDC',
-    fontFamily: 'Roboto',
     fontSize: 30,
     fontWeight: '800',
     marginVertical: 15,

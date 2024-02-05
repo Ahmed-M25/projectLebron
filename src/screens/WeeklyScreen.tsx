@@ -1,14 +1,129 @@
 import { StyleSheet, Text, View, ScrollView } from 'react-native'
 import React from 'react'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useState, useEffect } from 'react';
+import moment from 'moment';
+import {
+  StackedBarChart,
+  ProgressChart
+} from "react-native-chart-kit";
+import { convertToISO8601, formatDate, isInPastWeek, formatTime, fetchJsonData, url } from './functions';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
+import Icon from 'react-native-vector-icons/FontAwesome';
+
+const weekNames: string[] = ["Mon", "Tues", "Wed", "Thurs", "Fri", "Sat", "Sun"];
 
 const WeeklyScreen = () => {
+
+  const [weekTotal, setWeekTotal] = useState({ shotsMade: 0, shotsTaken: 0, shotsMissed: 0, timeOfSession: 0, highestStreak: 0});
+  const [weekData, setWeekData] = useState([
+    { shotsMade: 0, shotsMissed: 0 },
+    { shotsMade: 0, shotsMissed: 0 },
+    { shotsMade: 0, shotsMissed: 0 },
+    { shotsMade: 0, shotsMissed: 0 },
+    { shotsMade: 0, shotsMissed: 0 },
+    { shotsMade: 0, shotsMissed: 0 },
+    { shotsMade: 0, shotsMissed: 0 },
+  ]);
+
+  function getDayIndex(dateStr: string): number {
+    // Split the input date string into components
+    const parts: string[] = dateStr.split(' ');
+
+    var dayIndex: number = weekNames.indexOf(parts[0]);
+
+    return dayIndex;
+  }
+    
+  // Define an async function to fetch JSON data
+  async function fetchJsonData(url: string): Promise<any> {
+    try {
+        // Fetch data from the provided URL
+        const response = await fetch(url);
+        // Parse the response as JSON
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        // Handle any errors that occur during the fetch
+        console.error('Error fetching data:', error);
+        throw error;
+    }
+  }
+
+  useEffect(() => {
+    // Function to fetch data
+    const fetchData = () => {
+      fetchJsonData(url + "player-stats")
+        .then(data => {
+          var week_total = { shotsMade: 0, shotsTaken: 0, shotsMissed: 0, timeOfSession: 0, highestStreak: 0}
+          var week_data = [
+            { shotsMade: 0, shotsMissed: 0 },
+            { shotsMade: 0, shotsMissed: 0 },
+            { shotsMade: 0, shotsMissed: 0 },
+            { shotsMade: 0, shotsMissed: 0 },
+            { shotsMade: 0, shotsMissed: 0 },
+            { shotsMade: 0, shotsMissed: 0 },
+            { shotsMade: 0, shotsMissed: 0 },
+          ]
+          for (let i=0;i<data.length;i++) {
+            if (isInPastWeek(data[i]['date'])) {
+              let index = getDayIndex(data[i]['date']);
+              if (index != -1) {
+                week_data[index].shotsMade += data[i].shotsMade;
+                week_data[index].shotsMissed += data[i].shotsMissed;
+              }
+              week_total.shotsMade += data[i].shotsMade;
+              week_total.shotsTaken += data[i].shotsTaken;
+              week_total.shotsMissed += data[i].shotsMissed;
+              week_total.timeOfSession += data[i].timeOfSession;
+              if (data[i].highestStreak > week_total.highestStreak) {
+                week_total.highestStreak = data[i].highestStreak;
+              }
+            }
+          }
+          setWeekTotal(week_total);
+          setWeekData(week_data);
+        })
+        .catch(error => console.error('Error in fetching data:', error));
+    };
+  
+    // Initial fetch
+    fetchData();
+
+    // Set up polling
+    const interval = setInterval(fetchData, 10000); // Polling every 10 seconds
+
+    // Clear interval on component unmount
+    return () => clearInterval(interval);
+
+  }, []);
+
+  const data = {
+    labels: ["Mon     ", "Tues   ", "Wed", "Thurs", "Fri", "Sat", "Sun"],
+    legend: ["made", "missed"],
+    data: [
+      [weekData[0].shotsMade, weekData[0].shotsMissed],
+      [weekData[1].shotsMade, weekData[1].shotsMissed],
+      [weekData[2].shotsMade, weekData[2].shotsMissed],
+      [weekData[3].shotsMade, weekData[3].shotsMissed],
+      [weekData[4].shotsMade, weekData[4].shotsMissed],
+      [weekData[5].shotsMade, weekData[5].shotsMissed],
+      [weekData[6].shotsMade, weekData[6].shotsMissed],
+    ],
+    barColors: ["#58B449", "#B53E3E"]
+  };
+
+  const goalData = {
+    labels: ["Taken", "Made"], // optional
+    data: [(weekTotal.shotsTaken > 500 ? 1 : weekTotal.shotsTaken/500), (weekTotal.shotsMade > 100 ? 1 : weekTotal.shotsMade/100)]
+  };
+
+  
   return (
 
     <View style={{flex:1, backgroundColor: '#0D1B2A'}}>
       
       <View style={styles.topContainer}>
-        <Text style={styles.dateText}>Nov 19 - 25</Text>
+        <Text style={styles.dateText}>Weekly</Text>
       </View>
 
 
@@ -21,51 +136,98 @@ const WeeklyScreen = () => {
         <View style={styles.columnContainer}>
               <View style={[styles.labelContainer, {margin: 10 }]}>
                 <Text style={[styles.boxText, { color: '#1B263B'}]}>Time</Text>      
-                <Text style={[styles.boxText, {fontSize: 40, marginTop: 5}]}>17:19</Text>        
+                <Text style={[styles.boxText, {fontSize: 40, marginTop: 5}]}>{formatTime(weekTotal.timeOfSession)}</Text>        
               </View>
               <View style={[styles.labelContainer, {margin: 10, alignItems: 'flex-end'}]}>
-                <View style={[styles.mediumCircles]}></View>      
+                <View style={[styles.mediumCircles]}>
+                <Text style={[styles.boxText, { fontSize: 20, marginTop: 5, color: 'white'}]}>{weekTotal.shotsTaken != 0 ? (Math.round((weekTotal.shotsMade/weekTotal.shotsTaken)*100)).toString() + "%" : "0%"}</Text></View>      
               </View>
               <View style={[styles.labelContainer, {margin: 10, alignItems: 'flex-end'}]}>
-                <View style={[styles.mediumCircles]}></View>      
+                <View style={[styles.mediumCircles]}>
+                  <Text style={[styles.boxText, { fontSize: 20, marginTop: 5, color: 'white'}]}>{weekTotal.shotsMade} / {weekTotal.shotsTaken}</Text>
+                </View>      
               </View>
             </View>
             <View style={styles.columnContainer}>
               <View style={[styles.labelContainer, {margin: 10 }]}>
                 <Text style={[styles.boxText, { color: '#1B263B'}]}>Total</Text>      
-                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>192</Text>        
+                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekTotal.shotsTaken}</Text>        
               </View>
               <View style={[styles.labelContainer, {margin: 10}]}>
                 <Text style={[styles.boxText, { color: '#1B263B'}]}>Made</Text>      
-                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>61</Text>      
+                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekTotal.shotsMade}</Text>      
               </View>
               <View style={[styles.labelContainer, {margin: 10}]}>    
                 <Text style={[styles.boxText, { color: '#1B263B'}]}>Missed</Text>      
-                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>131</Text>                  
+                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekTotal.shotsMissed}</Text>                  
               </View>
               <View style={[styles.labelContainer, {margin: 10}]}>    
                 <Text style={[styles.boxText, { color: '#1B263B'}]}>Best Streak</Text>      
-                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>8</Text>                  
+                <Text style={[styles.boxText, { fontSize: 25, marginTop: 5, marginLeft: -35 }]}>{weekTotal.highestStreak}</Text> 
+                <View style={styles.flame}>
+                  <Icon name="fire" size={28} color="orange"/>
+                </View>                 
               </View>
             </View>
         </View>
 
         {/* Daily Charts */}
-        <Text style={styles.dailyCharts}>Daily Charts</Text>
-        <View style={styles.chartsContainer}>
+        <Text style={[styles.dailyCharts, {marginBottom: 15}]}>Daily Charts</Text>
+        <View style={styles.barChartContainer}>
+          <StackedBarChart
+            style={styles.barChart}
+            data={data}
+            width={400}
+            height={200}
+            hideLegend={true}
+            withHorizontalLabels={false}
+            chartConfig={{
+              backgroundGradientFrom: "#415A77",
+              backgroundGradientTo: "#415A77",
+              decimalPlaces: 2, // optional, defaults to 2dp
+              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+              propsForHorizontalLabels: {
+                fontWeight: 'bold',
+              },
+              style: {
+                borderRadius: 16,
+                justifyContent: 'center',
+                alignItems: 'center',
+                width: 900,
+              },
+            }}
+          />
         </View>
 
 
         {/* Daily Charts */}
-        <Text style={styles.dailyCharts}>Daily Charts</Text>
-        <View style={styles.chartsContainer}>
-        </View>
-
-
-        {/* Daily Charts */}
-        <Text style={styles.dailyCharts}>Daily Charts</Text>
-        <View style={[styles.chartsContainer, {marginBottom: 100}]}>
-        </View>
+        <Text style={styles.dailyCharts}>Weekly Goals</Text>
+        <ProgressChart
+          data={goalData}
+          style={styles.progressChart}
+          width={300}
+          height={220}
+          strokeWidth={16}
+          radius={32}
+          chartConfig={{
+            backgroundGradientFrom: "#415A77",
+            backgroundGradientTo: "#415A77",
+            decimalPlaces: 2, // optional, defaults to 2dp
+            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+            propsForHorizontalLabels: {
+              fontWeight: 'bold',
+            },
+            style: {
+              borderRadius: 16,
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: 900,
+            },
+          }}
+          hideLegend={false}
+        />
 
     
       </ScrollView>
@@ -83,6 +245,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  barChartContainer: {
+    marginRight: 0,
+  },
+
+  barChart: {
+    backgroundColor:'#415A77',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    marginRight: 105,
+  },
+  
+  progressChart: {
+    marginBottom: 100,
+  },
+
   dateText: {
     color:'white',
     fontSize: 28,
@@ -92,11 +270,11 @@ const styles = StyleSheet.create({
 
   topContainer: {
     width: '100%',
-    height: 130,
+    height: 100,
     paddingBottom: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'black',
+    backgroundColor: '#0D1B2A',
   },
 
   topPart: {
@@ -141,22 +319,6 @@ const styles = StyleSheet.create({
     marginHorizontal: -10,
     flex: 0, // Prevent the container from growing
   },
-
-  titleText: {
-    color:'white',
-    fontFamily: 'Roboto',
-    marginTop: 5,
-    marginBottom: 3,
-    fontSize: 25,
-    fontWeight: "800",
-  },
-  
-  smallText: {
-      color:'#415A77',
-      fontFamily: 'Roboto',
-      fontSize: 16,
-      fontWeight: "800",
-  },
   mainContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -188,13 +350,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  tagsText: {
-    color:'#415A77',
-    fontFamily: 'Roboto',
-    marginHorizontal: 50,
-    fontSize: 25,
-    fontWeight: "900",
   },
   bottomBoxContainer: {
       flexDirection: 'row',
@@ -258,15 +413,11 @@ const styles = StyleSheet.create({
     marginTop: 30,
     marginBottom: 30,
   },
-  endButtonText: {
-    color: '#DCDCDC',
-    fontFamily: 'Roboto',
-    fontWeight: '900',
-    fontSize: 20,
-    marginTop: 15,
-    marginBottom: 15,
+  flame: {
+    flexDirection: 'row',
+    marginLeft: 40,
+    marginTop: -30,
   },
-
 })
 
 export default WeeklyScreen

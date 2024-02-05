@@ -1,45 +1,75 @@
 import { StyleSheet, Text, View, SafeAreaView, TouchableOpacity, StatusBar, Touchable } from 'react-native'
 import React, { useState, useEffect } from 'react';
-const url = 'http://127.0.0.1:5000/player-stats';
+import { convertToISO8601, formatDate, isInPastWeek, formatTime, fetchJsonData, url } from './functions';
 
 const WorkoutEnd = ({ navigation }: {navigation: any}) => {
-    const [playerData, setPlayerData] = useState({ shotsMade: 0, shotsTaken: 0, shotsMissed: 0, highestStreak: 0, streak: 0, date: "", timeOfSession: 0});
-      
-    function formatTime(seconds: number): string {
-      const hours = Math.floor(seconds / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const remainingSeconds = seconds % 60;
-    
-      // Padding single digits with '0' for consistent formatting
-      const formattedHours = hours.toString().padStart(2, '0');
-      const formattedMinutes = minutes.toString().padStart(2, '0');
-      const formattedSeconds = remainingSeconds.toString().padStart(2, '0');
-    
-      return `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-    }
-
-    // Define an async function to fetch JSON data
-    async function fetchJsonData(url: string): Promise<any> {
-      try {
-          // Fetch data from the provided URL
-          const response = await fetch(url);
-          // Parse the response as JSON
-          const data = await response.json();
-          return data;
-      } catch (error) {
-          // Handle any errors that occur during the fetch
-          console.error('Error fetching data:', error);
-          throw error;
+    const [playerData, setPlayerData] = useState({ shotsMade: 0, shotsTaken: 0, shotsMissed: 0, highestStreak: 0, streak: 0, date: "Sat Jan 1 00:00:00 0000", timeOfSession: 0});
+    const [weekData, setWeekData] = useState({ shotsMade: 0, shotsTaken: 0, shotsMissed: 0, timeOfSession: 0, highestStreak: 0})
+    const [past2Data, setPast2Data] = useState([
+      { shotsMade: 0,
+        shotsTaken: 0,
+        date: "Sat Jan 1 00:00:00 0000",
+        timeOfSession: 0,
+      },
+      { shotsMade: 0,
+        shotsTaken: 0,
+        date: "Sat Jan 1 00:00:00 0000",
+        timeOfSession: 0,
       }
-    }
+    ])
 
     useEffect(() => {
       // Function to fetch data
       const fetchData = () => {
-        fetchJsonData(url)
+        fetchJsonData(url + "player-stats")
           .then(data => {
             const latestData = data[data.length - 1];
             setPlayerData(latestData);
+            var weekData = {
+              shotsMade: 0,
+              shotsTaken: 0,
+              shotsMissed: 0,
+              timeOfSession: 0,
+              highestStreak: 0,
+            }
+            for (let j=0;j<data.length;j++) {
+              console.log(data[j]['date']);
+              if (isInPastWeek(data[j]['date'])) {
+                weekData.shotsMade += data[j].shotsMade;
+                weekData.shotsTaken += data[j].shotsTaken;
+                weekData.shotsMissed += data[j].shotsMissed;
+                weekData.timeOfSession += data[j].timeOfSession;
+                if (data[j].highestStreak > weekData.highestStreak) {
+                  weekData.highestStreak = data[j].highestStreak;
+                }
+              }
+            }
+            setWeekData(weekData);
+
+            var past2Data = [
+              { shotsMade: 0,
+                shotsTaken: 0,
+                date: "Sat Jan 1 00:00:00 0000",
+                timeOfSession: 0,
+              },
+              { shotsMade: 0,
+                shotsTaken: 0,
+                date: "Sat Jan 1 00:00:00 0000",
+                timeOfSession: 0,
+              }
+            ] 
+            
+            var cnt=0, i=data.length-1;
+            while (i >= 0 && cnt < 2) {
+              past2Data[cnt].shotsMade = data[i].shotsMade;
+              past2Data[cnt].shotsTaken = data[i].shotsTaken;
+              past2Data[cnt].date = data[i].date;
+              past2Data[cnt].timeOfSession = data[i].timeOfSession;
+              cnt++;
+              i--;
+            }
+
+            setPast2Data(past2Data);
           })
           .catch(error => console.error('Error in fetching data:', error));
       };
@@ -59,7 +89,7 @@ const WorkoutEnd = ({ navigation }: {navigation: any}) => {
           <StatusBar barStyle={'light-content'} />
     
           {/* title text */}
-          <Text style={[styles.smallText, {marginBottom: 10}]}> 11.18.2023</Text>
+          <Text style={[styles.smallText, {marginBottom: 10}]}>{formatDate(playerData.date)}</Text>
           <View style={styles.topContainer}>
             <Text style={styles.titleText}>Morning Shootaround </Text>
           </View>
@@ -84,7 +114,7 @@ const WorkoutEnd = ({ navigation }: {navigation: any}) => {
 
             {/* middle circle */}
             <View style={styles.bigCircle}>
-              <Text style={styles.bigCircleTxt}>{playerData.shotsTaken != 0 ? (Math.round((playerData.shotsMade/playerData.shotsTaken)*100)).toString() + "%" : 0}</Text>
+              <Text style={styles.bigCircleTxt}>{playerData.shotsTaken != 0 ? (Math.round((playerData.shotsMade/playerData.shotsTaken)*100)).toString() + "%" : "0%"}</Text>
             </View>
 
             {/* right stats */}
@@ -110,19 +140,21 @@ const WorkoutEnd = ({ navigation }: {navigation: any}) => {
 
             {/* left box */}
             <TouchableOpacity style={styles.bottomBoxes}>
-              <View style={styles.smallCircles}></View>
+              <View style={styles.smallCircles}>
+                <Text style={[styles.boxText, { color: '#1B263B'}]}>{past2Data[0].shotsTaken != 0 ? (Math.round((past2Data[0].shotsMade/past2Data[0].shotsTaken)*100)).toString() + "%" : "0%"}</Text>
+              </View>
               <View style={[styles.labelContainer, {marginLeft: 5, alignItems: 'flex-end'}]}>
-                <Text style={[styles.boxText, { fontSize: 25 }]}>17:19</Text>        
-                <Text style={[styles.boxText, { color: '#1B263B'}]}>11.20.23</Text>              
+                <Text style={[styles.boxText, { fontSize: 17.5 }]}>{formatTime(past2Data[0].timeOfSession)}</Text>        
+                <Text style={[styles.boxText, { color: '#1B263B'}]}>{formatDate(past2Data[0].date)}</Text>              
               </View>
             </TouchableOpacity>
 
             {/* right box */}
             <TouchableOpacity style={styles.bottomBoxes}>
-              <View style={styles.smallCircles}></View>
+              <View style={styles.smallCircles}><Text style={[styles.boxText, { color: '#1B263B'}]}>{past2Data[1].shotsTaken != 0 ? (Math.round((past2Data[1].shotsMade/past2Data[1].shotsTaken)*100)).toString() + "%" : "0%"}</Text></View>
               <View style={[styles.labelContainer, {marginLeft: 5, alignItems: 'flex-end'}]}>
-                <Text style={[styles.boxText, { fontSize: 25 }]}>17:19</Text>        
-                <Text style={[styles.boxText, { color: '#1B263B'}]}>11.20.23</Text>              
+                <Text style={[styles.boxText, { fontSize: 17.5 }]}>{formatTime(past2Data[1].timeOfSession)}</Text>        
+                <Text style={[styles.boxText, { color: '#1B263B'}]}>{formatDate(past2Data[1].date)}</Text>              
               </View>
             </TouchableOpacity>
 
@@ -136,31 +168,35 @@ const WorkoutEnd = ({ navigation }: {navigation: any}) => {
               <View style={styles.columnContainer}>
                 <View style={[styles.labelContainer, {margin: 10 }]}>
                   <Text style={[styles.boxText, { color: '#1B263B'}]}>Time</Text>      
-                  <Text style={[styles.boxText, { fontSize: 40, marginTop: 5 }]}>17:19</Text>        
+                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{formatTime(weekData.timeOfSession)}</Text>        
                 </View>
                 <View style={[styles.labelContainer, {margin: 10, alignItems: 'flex-end'}]}>
-                  <View style={[styles.mediumCircles]}></View>      
+                  <View style={[styles.mediumCircles]}>
+                    <Text style={[styles.boxText, { color: '#1B263B', fontSize: 22.5}]}>{weekData.shotsTaken != 0 ? (Math.round((weekData.shotsMade/weekData.shotsTaken)*100)).toString() + "%" : "0%"}</Text>
+                  </View>      
                 </View>
                 <View style={[styles.labelContainer, {margin: 10, alignItems: 'flex-end'}]}>
-                  <View style={[styles.mediumCircles]}></View>      
+                  <View style={[styles.mediumCircles]}>
+                    <Text style={[styles.boxText, { color: '#1B263B', fontSize: 22.5}]}>{weekData.shotsMade}/{weekData.shotsTaken}</Text>
+                  </View>      
                 </View>
               </View>
               <View style={styles.columnContainer}>
                 <View style={[styles.labelContainer, {margin: 10 }]}>
-                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Time</Text>      
-                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>17:19</Text>        
+                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Total</Text>      
+                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekData.shotsTaken}</Text>        
                 </View>
                 <View style={[styles.labelContainer, {margin: 10}]}>
-                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Time</Text>      
-                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>17:19</Text>      
+                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Made</Text>      
+                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekData.shotsMade}</Text>      
                 </View>
                 <View style={[styles.labelContainer, {margin: 10}]}>    
-                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Time</Text>      
-                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>17:19</Text>                  
+                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Missed</Text>      
+                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekData.shotsMissed}</Text>                  
                 </View>
                 <View style={[styles.labelContainer, {margin: 10}]}>    
-                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Time</Text>      
-                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>17:19</Text>                  
+                  <Text style={[styles.boxText, { color: '#1B263B'}]}>Best Streak</Text>      
+                  <Text style={[styles.boxText, { fontSize: 25, marginTop: 5 }]}>{weekData.highestStreak}</Text>                  
                 </View>
               </View>
             </TouchableOpacity>

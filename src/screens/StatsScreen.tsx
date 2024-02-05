@@ -9,7 +9,7 @@ const StatsScreen = () => {
       <SafeAreaView style={styles.titleContainer}>
         <Text style={styles.titleScreen}>Stats</Text>
       </SafeAreaView>
-      <TopNav />
+      <TopNav/>
       <StatusBar barStyle={'light-content'} />
     </SafeAreaView>
   )
